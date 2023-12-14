@@ -1,0 +1,90 @@
+# MediaWiki with MySql
+#
+# Refer to the README file for instructions of how to run this container
+# The code of docker-compose file is based on the mediawiki official image (https://hub.docker.com/_/mediawiki/)
+version: '3.8'
+
+services:
+  # mediawiki: the container which runs the frontend and backend of the website
+  mediawiki:
+    #build: .
+    #image: wiki-image
+    image: mediawiki:1.27
+    container_name: mediawiki
+    restart: always
+    # Use port 8080 on the local machine
+    ports:
+      - '8080:80'
+    # After initial setup, download LocalSettings.php to the same directory as
+    # this yaml and uncomment the following two lines and use compose to restart the mediawiki service
+    volumes:
+      # - ./LocalSettings.php:/var/www/html/LocalSettings.php
+      # Bind Mount some of the images used in MediaWiki container, uncomment if needed
+      - ./wiki-code/LocalSettings.php:/var/www/html/LocalSettings.php
+      - ./wiki-code/extensions:/var/www/html/extensions
+      - ./wiki-code/images:/var/www/html/images
+
+    networks:
+      # mediawiki-network: a shared network between all the containers of MediaWiki
+      - mediawiki-network
+
+  # wiki-mysql-db: the second container that runs the database of the website
+  wiki-mysql-db:
+    # Use the mysql official docker image version 5.7.30
+    image: mysql:5.7.30
+    # Set the container name to wiki-mysql-db2
+    container_name: wiki-mysql-db
+    # Use the port 3308
+    ports:
+      - "3310:3306"
+    # When running the website initially, the website will try to initiate a new database
+    # Use the following values for the fields
+    environment:
+      #-------------------------------------------------------------------------------
+      # MediaWiki Database setup:
+      #-------------------------------------------------------------------------------
+      # Database host: wiki-mysql-db2 [name of the database container]
+      # Database name (no hyphens): mysql_db [MYSQL_DATABASE]
+      # Database table prefix: "" (optional)
+      # Database username: admin [MYSQL_USER]
+      # Database password: database_pass [MYSQL_PASSWORD]
+      # Name of wiki: Dadt wiki
+      # Your username: root (can be something different)
+      # Password: admin12345 [MYSQL_ROOT_PASSWORD]
+      #-------------------------------------------------------------------------------
+      MYSQL_ROOT_PASSWORD: "admin12345"
+      MYSQL_DATABASE: "mysql_db"
+      MYSQL_USER: "admin"
+      MYSQL_PASSWORD: "database_pass"
+    # Saving all the database data inside the db volume
+    volumes:
+      - wiki-db:/var/lib/mysql
+      - ./wiki.sql:/wiki.sql
+    networks:
+      - mediawiki-network
+
+  # phpmyadmin container: a tool to manage the backend code of the website and can be used for data transformation
+  # This image is not essentiel for the functionality of the website, so it can be removed if needed
+  # When logging in phpmyadmin make sure to use MYSQL_USER and MYSQL_PASSWORD values in the database container to connect
+  wiki-phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    # Set the container name to wiki-phpmyadmin
+    container_name: wiki-phpmyadmin
+    restart: always
+    ports:
+      - '8003:80'
+    environment:
+      PMA_HOST: wiki-mysql-db
+      MYSQL_ROOT_PASSWORD: admin12345 
+      UPLOAD_LIMIT: 64M
+    networks:
+      - mediawiki-network
+
+# List of networks
+networks:
+  mediawiki-network:
+    driver: bridge
+
+# List of volumes
+volumes:
+  wiki-db:

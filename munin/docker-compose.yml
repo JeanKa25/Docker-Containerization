@@ -1,0 +1,19 @@
+#Munin
+#
+#Refer to the README file for instructions of how to run this container
+version: '3.8'
+
+services:
+  #munin: the container which runs the frontend and backend of the website
+  munin:
+    # Use Dockerfile to build the image
+    build: .
+    # Name of the image
+    image: munin-image
+    # Set the container name to munin
+    container_name: munin
+    # Use ports 4948 and 8080 on the local machine
+    ports:
+      - 4948:4949
+      - 8081:80
+

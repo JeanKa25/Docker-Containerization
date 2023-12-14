@@ -1,0 +1,41 @@
+# Grafana with Influxdb
+#
+# Refer to the README file for instructions of how to run this container
+# The code of docker-compose file is based on the mediawiki official image (https://hub.docker.com/r/grafana/grafana)
+version: '3.8'
+
+services:
+  # grafana: the container which runs the frontend and backend of the website
+  grafana:
+    # Use the official grafana image to build the container
+    image: grafana/grafana
+    container_name: grafana
+    restart: always
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana-volume:/var/lib/influxdb
+    networks:
+      # grafana-network: a shared network between all the containers of Grafana
+      - grafana-network
+
+  influxdb:
+    # influxdb (optional): this container can be ran to be used as a datasource for grafana
+    image: influxdb:latest
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-volume:/var/lib/influxdb
+    networks:
+      - grafana-network
+
+# List of networks
+networks:
+  grafana-network:
+    driver: bridge
+
+# List of volumes
+volumes:
+  grafana-volume:
+  influxdb-volume:

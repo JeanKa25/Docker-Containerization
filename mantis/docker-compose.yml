@@ -1,0 +1,84 @@
+#MantisBT with MySql
+#
+#Refer to the README file for instructions of how to run this container
+version: '3.8'
+
+services:
+  #mantis: the container which runs the frontend and backend of Mantis Bug Tracker website
+  mantis:
+    #Specify where the Dockerfile is located
+    build: .
+    #mantis-image: name of the mantis image
+    image: mantis-image
+    #Set the container name to mantis
+    container_name: mantis
+    #Use the port 8989 on the local machine
+    ports:
+      - "8989:80"
+    #Volume section for the mantis container that permenantly saves the config and custom files
+    volumes:
+      - ./mantis-code:/var/www/html
+    #mantis-network: The network that all the containers are connected to
+    networks:
+      - mantis-network
+
+  #mantis-mysql-db: specify the name of the second container that runs the database of the website
+  mantis-mysql-db:
+    #Use the mysql official docker image version 5.7.30
+    image: mysql:5.7.30
+    #Set the container name to mantis-mysql-db
+    container_name: mantis-mysql-db
+    #Use the port 3306
+    ports:
+      - "3307:3306"
+    #When running the website initially, the website will try to connect to the database
+    #Use the following values for the fields
+    environment:
+      #-------------------------------------------------------------------------------
+      # Mantis Database setup:
+      #-------------------------------------------------------------------------------
+      # Hostname (for Database Server): mantis-mysql-db [name of the container]
+      # Username (for Database): root
+      # Password (for Database): admin12345 [MYSQL_ROOT_PASSWORD]
+      # Database name (for Database): mysql_db [MYSQL_DATABASE]
+      # Admin Username (to create Database if required): admin [MYSQL_USER]
+      # Admin Password (to create Database if required): database_pass [MYSQL_PASSWORD]
+      # Database Table Prefix: mantis
+      # Database Plugin Table Prefix: plugin
+      # Database Table Suffix: _table
+      #-------------------------------------------------------------------------------
+      MYSQL_ROOT_PASSWORD: "admin12345"
+      MYSQL_DATABASE: "mysql_db"
+      MYSQL_USER: "admin"
+      MYSQL_PASSWORD: "database_pass"
+    #Saving all the database data inside the db volume
+    volumes:
+      - mantis-db:/var/lib/mysql
+    networks:
+      - mantis-network
+
+  #phpmyadmin container: a tool to manage the backend code of the website and can be used for data transformation
+  #This image is not essentiel for the functionality of the website, so it can be removed if needed
+  #When logging in phpmyadmin make sure to use MYSQL_USER and MYSQL_PASSWORD values in the database container to connect
+  mantis-phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    # Set the container name to phpmyadmin
+    container_name: mantis-phpmyadmin
+    restart: always
+    ports:
+      - '8000:80'
+    environment:
+      PMA_HOST: mantis-mysql-db
+      MYSQL_ROOT_PASSWORD: admin12345
+      UPLOAD_LIMIT: 64M
+    networks:
+      - mantis-network
+        
+#List of networks
+networks:
+  mantis-network:
+    driver: bridge
+
+#List of volumes
+volumes:
+  mantis-db:

@@ -1,0 +1,16 @@
+version: '3.7'
+
+services:
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.10.4
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+    networks: 
+      - graylog_graynet
+    command: filebeat -e -strict.perms=false
+      
+networks:
+  graylog_graynet:
+    external: true

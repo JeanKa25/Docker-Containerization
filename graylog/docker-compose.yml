@@ -1,0 +1,93 @@
+version: '3.8'
+
+networks:
+  graynet:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
+  es_log_data:
+    driver: local
+  graylog_data:
+    driver: local
+
+services:
+  mongo:
+    image: mongo:6.0.5-jammy
+    container_name: mongodb
+    volumes:
+      - "mongo_data:/data/db"
+    networks:
+      - graynet
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    container_name: elasticsearch
+    environment:
+      - http.host=0.0.0.0
+      - transport.host=localhost
+      - network.host=0.0.0.0
+      - "ES_JAVA_OPTS=-Dlog4j2.formatMsgNoLookups=true -Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - 9200:9200/tcp
+    networks:
+      - graynet
+    restart: unless-stopped
+    volumes:
+      - "es_log_data:/usr/share/elasticsearch/data"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  graylog:
+    image: graylog/graylog:5.2.2
+    container_name: graylog
+    environment:
+      GRAYLOG_PASSWORD_SECRET: "somepasswordpepper"
+      GRAYLOG_ROOT_PASSWORD_SHA2: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+      GRAYLOG_HTTP_BIND_ADDRESS: "0.0.0.0:9000"
+      GRAYLOG_HTTP_EXTERNAL_URI: "http://localhost:9000/"
+      GRAYLOG_ELASTICSEARCH_HOSTS: "http://elasticsearch:9200"
+      GRAYLOG_MONGODB_URI: "mongodb://mongodb:27017/graylog"
+      GRAYLOG_TIMEZONE: "UTC"
+      TZ: "UTC"
+      GRAYLOG_TRANSPORT_EMAIL_PROTOCOL: "smtp"
+      GRAYLOG_TRANSPORT_EMAIL_WEB_INTERFACE_URL: "http://192.168.3.233:9000/"
+      GRAYLOG_TRANSPORT_EMAIL_HOSTNAME: "outbound.mailhop.org"
+      GRAYLOG_TRANSPORT_EMAIL_ENABLED: "true"
+      GRAYLOG_TRANSPORT_EMAIL_PORT: "587"
+      GRAYLOG_TRANSPORT_EMAIL_USE_AUTH: "true"
+      GRAYLOG_TRANSPORT_EMAIL_AUTH_USERNAME: "xxxxx"
+      GRAYLOG_TRANSPORT_EMAIL_AUTH_PASSWORD: "xxxxx"
+      GRAYLOG_TRANSPORT_EMAIL_USE_TLS: "true"
+      GRAYLOG_TRANSPORT_EMAIL_USE_SSL: "false"
+      GRAYLOG_TRANSPORT_FROM_EMAIL: "graylog@example.com"
+      GRAYLOG_TRANSPORT_SUBJECT_PREFIX: "[graylog]"
+    entrypoint: /usr/bin/tini -- wait-for-it elasticsearch:9200 -- /docker-entrypoint.sh
+    volumes:
+      - "${PWD}/config/graylog/graylog.conf:/usr/share/graylog/config/graylog.conf"
+      - "graylog_data:/usr/share/graylog/data"
+    networks:
+      - graynet
+    restart: always
+    depends_on:
+      elasticsearch:
+        condition: "service_started"
+      mongo:
+        condition: "service_started"
+    ports:
+      - 9000:9000/tcp   # Graylog web interface and REST API
+      - 5044:5044/tcp   # Filebeat
+      - 5044:5044/udp   # Filebeat
+      - 12201:12201/tcp # GELF
+      - 12201:12201/udp # GELF

@@ -1,0 +1,34 @@
+---
+- name: Install and Configure Filebeat
+  hosts: 142.135.24.113 
+  become: yes
+  tasks:
+    - name: Download Filebeat
+      get_url:
+        url: https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.9.0-amd64.deb
+        dest: /tmp/filebeat-8.9.0-amd64.deb
+
+    - name: Install Filebeat
+      command: dpkg -i /tmp/filebeat-8.9.0-amd64.deb
+
+    - name: Copy modified filebeat.yml
+      template:
+        src: ../templates/filebeat.yml
+        dest: /etc/filebeat/filebeat.yml
+      notify: restart filebeat
+
+    - name: Enable Filebeat service
+      systemd:
+        name: filebeat
+        enabled: yes
+
+    - name: Start Filebeat service
+      systemd:
+        name: filebeat
+        state: started
+
+  handlers:
+    - name: restart filebeat
+      systemd:
+        name: filebeat
+        state: restarted
